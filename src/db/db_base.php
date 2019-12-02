@@ -10,6 +10,10 @@ class Db_Base {
     protected $_pdo;
 
     public function __construct($host=null, $port=null, $dbname=null, $username=null, $password=null) {
+        $this->_connect($host, $port, $dbname, $username, $password);
+    }
+
+    protected function _connect($host=null, $port=null, $dbname=null, $username=null, $password=null) {
         $connect_array = $this->_build_connection_string($host, $port, $dbname, $username, $password);
         $this->_pdo = new PDO($connect_array[0], $connect_array[1], $connect_array[2]);
     }
@@ -52,6 +56,8 @@ class Db_Base {
     public function execute($sql, $params=null) {
         $query = $this->_pdo->prepare($sql);
         $query->execute($params);
+        if ($query->errorInfo()[0] != 0)
+            var_dump($query->errorInfo());
         return $query;
     }
 

@@ -8,10 +8,10 @@ require_once("../src/db/db_base.php");
 class Db_Builder extends Db_Base
 {
 
-    public function __construct($host = null, $port = null, $dbname = null, $username = null, $password = null)
+    public function __construct()
     {
-        parent::__construct($host, $port, $dbname, $username, $password);
-//        $this->_pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, 0);
+        global $DB_ROOT_PASSWORD;
+        parent::__construct(null, null, "", "root", $DB_ROOT_PASSWORD);
     }
 
     public function build()
@@ -23,19 +23,26 @@ class Db_Builder extends Db_Base
 
     private function _create_database()
     {
-        global $DB_NAME;
-//        $sql = "
-//            CREATE DATABASE IF NOT EXISTS :dbname;
-//            CREATE TABLE IF NOT EXISTS version (
-//            version INTEGER PRIMARY KEY
-//            );
-//            INSERT INTO version (version) VALUES (0) ON CONFLICT DO NOTHING;
-//        ";
-//        $this->execute($sql, array(":dbname" => $DB_NAME));
-        $sql = "CREATE DATABASE IF NOT EXISTS :dbname;";
-        $this->execute($sql, array(":dbname" => $DB_NAME));
+        global $DB_HOST, $DB_NAME, $DB_USERNAME, $DB_PASSWORD;
+        $this->execute("CREATE DATABASE IF NOT EXISTS " . $DB_NAME . ";");
+        $this->execute(
+            "CREATE USER IF NOT EXISTS " . $DB_USERNAME . "@" . $DB_HOST . " IDENTIFIED BY ?;",
+            array($DB_PASSWORD)
+        );
+        $this->execute(
+            "GRANT ALL PRIVILEGES ON " . $DB_NAME . ".* TO ?@?;",
+            array($DB_USERNAME, $DB_HOST)
+        );
+        // Close and reopen connection using connection information in config file.
+        $this->close();
+        $this->_connect();
+        $this->execute("
+        CREATE TABLE IF NOT EXISTS version (
+            version INTEGER PRIMARY KEY
+        );");
+        $this->execute("INSERT INTO version (version) VALUES (0);");
     }
 }
 
-$db_builder = new Db_Builder(null, null, "", "root", "");
+$db_builder = new Db_Builder();
 $db_builder->build();
