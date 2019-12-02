@@ -1,6 +1,7 @@
 <?php
 $DB_HOST = "localhost";
-$DB_PORT = null;
+$DB_PORT = 3306;
+$DB_ROOT_PASSWORD = "";
 $DB_NAME = "web_comic";
-$DB_USERNAME = "comics_user";
+$DB_USERNAME = "web_comic";
 $DB_PASSWORD = "password";
