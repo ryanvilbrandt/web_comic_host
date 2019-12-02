@@ -1,5 +1,4 @@
 <?php
-
 require_once "../conf/db_conf.php";
 require_once "../src/utils.php";
 
@@ -8,10 +7,11 @@ class Db_Base {
     /**
      * @var PDO
      */
-    private $_pdo;
+    protected $_pdo;
 
     public function __construct($host=null, $port=null, $dbname=null, $username=null, $password=null) {
         $connect_array = $this->_build_connection_string($host, $port, $dbname, $username, $password);
+        dump($connect_array);
         $this->_pdo = new PDO($connect_array[0], $connect_array[1], $connect_array[2]);
     }
 
@@ -37,11 +37,11 @@ class Db_Base {
             $password = $DB_PASSWORD;
         }
         $connect_string = 'mysql:';
-        if (isset($host))
+        if (isset($host) and !empty($host))
             $connect_string .= 'host=' . $host . ';';
-        if (isset($port))
+        if (isset($port) and !empty($port))
             $connect_string .= 'port=' . $port . ';';
-        if (isset($dbname))
+        if (isset($dbname) and !empty($dbname))
             $connect_string .= 'dbname=' . $dbname . ';';
         return [$connect_string, $username, $password];
     }
