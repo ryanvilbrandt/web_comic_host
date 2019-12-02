@@ -11,7 +11,6 @@ class Db_Base {
 
     public function __construct($host=null, $port=null, $dbname=null, $username=null, $password=null) {
         $connect_array = $this->_build_connection_string($host, $port, $dbname, $username, $password);
-        dump($connect_array);
         $this->_pdo = new PDO($connect_array[0], $connect_array[1], $connect_array[2]);
     }
 
@@ -50,9 +49,13 @@ class Db_Base {
         $this->_pdo = null;
     }
 
+    public function execute($sql, $params=null) {
+        $query = $this->_pdo->prepare($sql);
+        $query->execute($params);
+        return $query;
+    }
+
     public function show_tables() {
-        $query = $this->_pdo->query("show TABLES;");
-        $query->execute();
-        return $query->fetchAll();
+        return $this->execute("show TABLES;")->fetchAll();
     }
 }
