@@ -8,8 +8,11 @@ class Db_Base {
      * @var PDO
      */
     protected $_pdo;
+    private $throw_exceptions = false;
 
-    public function __construct($host=null, $port=null, $dbname=null, $username=null, $password=null) {
+    public function __construct($host=null, $port=null, $dbname=null, $username=null, $password=null,
+                                $throw_exceptions=true) {
+        $this->throw_exceptions = $throw_exceptions;
         $this->_connect($host, $port, $dbname, $username, $password);
     }
 
@@ -53,15 +56,62 @@ class Db_Base {
         $this->_pdo = null;
     }
 
+    /**
+     * @param $sql
+     * @param null $params
+     * @return bool|PDOStatement
+     * @throws MySqlException
+     */
     public function execute($sql, $params=null) {
         $query = $this->_pdo->prepare($sql);
         $query->execute($params);
-        if ($query->errorInfo()[0] != 0)
-            var_dump($query->errorInfo());
+        if ($query->errorCode() != 0)
+            if ($this->throw_exceptions) {
+                throw new MySqlException(var_export($query->errorInfo(), true));
+            } else {
+                var_export($query->errorInfo());
+            }
         return $query;
     }
 
+    /**
+     * @param $sql
+     * @param null $params
+     * @return mixed
+     * @throws MySqlException
+     */
+    public function scalar($sql, $params=null) {
+        return $this->execute($sql, $params)->fetch()[0];
+    }
+
+    /**
+     * @param $sql
+     * @param null $params
+     * @return mixed
+     * @throws MySqlException
+     */
+    public function fetch($sql, $params=null) {
+        return $this->execute($sql, $params)->fetch();
+    }
+
+    /**
+     * @param $sql
+     * @param null $params
+     * @return array
+     * @throws MySqlException
+     */
+    public function fetchAll($sql, $params=null) {
+        return $this->execute($sql, $params)->fetchAll();
+    }
+
+    /**
+     * @return array
+     * @throws MySqlException
+     */
     public function show_tables() {
         return $this->execute("show TABLES;")->fetchAll();
     }
 }
+
+
+class MySqlException extends Exception {}
