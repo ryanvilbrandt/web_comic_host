@@ -1,16 +1,38 @@
 <?php
 require_once "../conf/comic_properties.php";
 require_once "../src/utils.php";
+require_once "../src/db/web_comic_db_reader.php";
+require_once "templates/comic_page.php";
+require_once "templates/missing_page.php";
 
-$page_list = [1575231000, 1575232000, 1575233000, 1575234000, 1575235000];
-//dump($_REQUEST);
-$page_num = get($_REQUEST["page"], 1575235000);
-$page_index = array_search($page_num, $page_list);
-$first_page = $page_list[0];
-$last_page = $page_list[count($page_list) - 1];
-$previous_page = $page_index === 0 ? $first_page : $page_list[$page_index - 1];
-$next_page = ($page_index < count($page_list) - 1) ? $page_list[$page_index + 1] : $last_page;
-//dump($page_num, $page_index, $first_page, $previous_page, $next_page, $last_page);
+$db = new WebComicDbReader();
+$post_id = get($_REQUEST["id"], null);
+$content = "";
+try {
+    if (is_null($post_id)) {
+        $post_id = $db->get_last_page_id();
+        $last_page_id = $post_id;
+    }
+
+    $post = $db->get_post_by_id($post_id);
+    if (is_null($post)) {
+        $content = missing_page($post_id);
+    } else {
+        $first_page_id = $db->get_first_page_id();
+        var_dump(gettype($first_page_id));
+        if (!isset($last_page_id))
+            $last_page_id = $db->get_last_page_id();
+        $previous_page_id = $db->get_previous_page_id($post["post_date"]);
+        if (is_null($previous_page_id))
+            $previous_page_id = $first_page_id;
+        $next_page_id = $db->get_next_page_id($post["post_date"]);
+        if (is_null($next_page_id))
+            $next_page_id = $last_page_id;
+        $content = comic_page($post, $first_page_id, $previous_page_id, $next_page_id, $last_page_id);
+    }
+} catch (MySqlException $e) {
+    var_dump($e);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -18,22 +40,7 @@ $next_page = ($page_index < count($page_list) - 1) ? $page_list[$page_index + 1]
 
 <body>
 
-<?php
-$image_path = "static/img/" . $page_num . ".png";
-
-echo '<h1>Comic for ' . epoch_to_date($page_num) . '</h1>
-
-<p><img src="' . $image_path . '" alt="Comic page"></p>
-
-<p><a href="index.php?page=' . $first_page . '">&lt;&lt;</a>
-&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="index.php?page=' . $previous_page . '">&lt;</a>
-&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="index.php?page=' . $next_page . '">&gt;</a>
-&nbsp;&nbsp;&nbsp;&nbsp;
-<a href="index.php?page=' . $last_page . '">&gt;&gt;</a>'
-?>
-
+<?php echo $content; ?>
 
 </body>
 </html>
