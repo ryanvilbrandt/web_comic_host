@@ -2,26 +2,25 @@
 require_once "../conf/db_conf.php";
 require_once "../src/utils.php";
 
-class Db_Base {
+class Db_Base
+{
 
     /**
-     * @var PDO
+     * @var mysqli
      */
-    protected $_pdo;
+    protected $_mysqli;
     private $throw_exceptions = false;
 
-    public function __construct($host=null, $port=null, $dbname=null, $username=null, $password=null,
-                                $throw_exceptions=true) {
+    public function __construct($host = null, $port = null, $dbname = null, $username = null, $password = null,
+                                $autocommit = true, $throw_exceptions = true)
+    {
         $this->throw_exceptions = $throw_exceptions;
-        $this->_connect($host, $port, $dbname, $username, $password);
+        $this->_connect($host, $port, $dbname, $username, $password, $autocommit);
     }
 
-    protected function _connect($host=null, $port=null, $dbname=null, $username=null, $password=null) {
-        $connect_array = $this->_build_connection_string($host, $port, $dbname, $username, $password);
-        $this->_pdo = new PDO($connect_array[0], $connect_array[1], $connect_array[2]);
-    }
-
-    private function _build_connection_string($host, $port, $dbname, $username, $password) {
+    protected function _connect($host = null, $port = null, $dbname = null, $username = null, $password = null,
+                                $autocommit = true)
+    {
         if (!isset($host)) {
             global $DB_HOST;
             $host = $DB_HOST;
@@ -42,35 +41,42 @@ class Db_Base {
             global $DB_PASSWORD;
             $password = $DB_PASSWORD;
         }
-        $connect_string = 'mysql:';
-        if (isset($host) and !empty($host))
-            $connect_string .= 'host=' . $host . ';';
-        if (isset($port) and !empty($port))
-            $connect_string .= 'port=' . $port . ';';
-        if (isset($dbname) and !empty($dbname))
-            $connect_string .= 'dbname=' . $dbname . ';';
-        return [$connect_string, $username, $password];
+        $this->_mysqli = new mysqli($host, $username, $password, $dbname, $port);
+        $this->_mysqli->autocommit($autocommit);
     }
 
-    public function close() {
-        $this->_pdo = null;
+    public function commit() {
+        $this->_mysqli->commit();
+    }
+
+    public function rollback() {
+        $this->_mysqli->rollback();
+    }
+
+    public function close()
+    {
+        $this->_mysqli->close();
     }
 
     /**
      * @param $sql
      * @param null $params
-     * @return bool|PDOStatement
+     * @return false|mysqli_stmt
      * @throws MySqlException
      */
-    public function execute($sql, $params=null) {
-        $query = $this->_pdo->prepare($sql);
-        $query->execute($params);
-        if ($query->errorCode() != 0)
+    public function execute($sql, $params = null)
+    {
+        $query = $this->_mysqli->prepare($sql);
+        if (!is_null($params))
+            $query->bind_param(...$params);
+        $query->execute();
+        if ($query->errno != 0) {
             if ($this->throw_exceptions) {
-                throw new MySqlException(var_export($query->errorInfo(), true));
+                throw new MySqlException($query->error);
             } else {
-                var_export($query->errorInfo());
+                var_export($query->error_list);
             }
+        }
         return $query;
     }
 
@@ -80,18 +86,9 @@ class Db_Base {
      * @return mixed
      * @throws MySqlException
      */
-    public function scalar($sql, $params=null) {
-        return $this->execute($sql, $params)->fetch()[0];
-    }
-
-    /**
-     * @param $sql
-     * @param null $params
-     * @return mixed
-     * @throws MySqlException
-     */
-    public function fetch($sql, $params=null) {
-        return $this->execute($sql, $params)->fetch();
+    public function scalar($sql, $params = null)
+    {
+        return $this->execute($sql, $params)->get_result()->fetch_row()[0];
     }
 
     /**
@@ -100,18 +97,38 @@ class Db_Base {
      * @return array
      * @throws MySqlException
      */
-    public function fetchAll($sql, $params=null) {
-        return $this->execute($sql, $params)->fetchAll();
+    public function fetch($sql, $params = null)
+    {
+        return $this->execute($sql, $params)->get_result()->fetch_array();
+    }
+
+    /**
+     * @param $sql
+     * @param null $params
+     * @return array
+     * @throws MySqlException
+     */
+    public function fetch_all($sql, $params = null)
+    {
+        $result = $this->execute($sql, $params)->get_result();
+        $arr = array();
+        for ($i = 0; $i < $result->num_rows; $i++) {
+            array_push($arr, $result->fetch_array());
+        }
+        return $arr;
     }
 
     /**
      * @return array
      * @throws MySqlException
      */
-    public function show_tables() {
-        return $this->execute("show TABLES;")->fetchAll();
+    public function show_tables()
+    {
+        return $this->fetch_all("show TABLES;");
     }
 }
 
 
-class MySqlException extends Exception {}
+class MySqlException extends Exception
+{
+}
