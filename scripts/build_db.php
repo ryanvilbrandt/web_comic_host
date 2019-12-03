@@ -74,14 +74,16 @@ class Db_Builder extends Db_Base
         print("Building tables...");
         $sql = "
         CREATE TABLE posts (
+            post_id INT AUTO_INCREMENT PRIMARY KEY,
             name TEXT UNIQUE NOT NULL,
+            post_date DATETIME UNIQUE NOT NULL DEFAULT NOW(),
             comic_page_path TEXT,
-            post_date DATETIME NOT NULL DEFAULT NOW(),
-            tags JSON NOT NULL,
+            alt_text TEXT,
+            tags JSON NOT NULL DEFAULT '[]',
             text TEXT NOT NULL,
             created_ts DATETIME NOT NULL DEFAULT NOW(),
             updated_ts DATETIME NOT NULL DEFAULT NOW()
-        )
+        );
         ";
         $this->execute($sql);
 
